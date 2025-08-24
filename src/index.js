@@ -4,16 +4,27 @@ import dotenv from 'dotenv';
 import main from './config/db.js';
 import cookieParser from 'cookie-parser';
 import authRouter from './routes/userAuth.js';
+import problemRouter from './routes/problemCreator.js';
+import redisClient from './config/redis.js';
 dotenv.config();
 app.use(express.json());    //to convert json data to object 
 app.use(cookieParser());  //to parse cookies from the request
 
 app.use("/user",authRouter);
-main().then(async ()=>{
-    app.listen(process.env.PORT,()=>{
-    console.log("server is running on port number " +process.env.PORT);
-})
-})
-.catch((err)=>{
-    console.log("Error connecting to the database:",err);
-})
+app.use("/problem",problemRouter);
+
+
+const intializeConnection=async()=>{
+    try{
+        await Promise.all([main(),redisClient.connect()]);
+        console.log("Connected to MongoDB and Redis successfully");
+
+        app.listen(process.env.PORT,()=>{
+     console.log("server is running on port number " +process.env.PORT);
+    });
+}
+    catch(err){
+        console.error("Error connecting to MongoDb or Redis:",err);
+    }
+}
+intializeConnection();
