@@ -32,7 +32,7 @@ const createProblem = async (req, res) => {
 
             const resultToken = submitResult.map((value) => value.token); // creates the array and returns the token
             // console.log(resultToken)
-            const testResult = await submitToken(resultToken)
+            const testResult = await submitToken(resultToken);
             // console.log(testResult);
              // check the test cases
             for (let i = 0; i < testResult.length; i++) {

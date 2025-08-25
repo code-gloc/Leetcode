@@ -35,8 +35,13 @@ const userSchema=new Schema({
         required:true,
     },
     problemSolved:{
-        type:Number,
-        default:0,
+        type:[
+            {
+             type:Schema.Types.ObjectId,
+             ref:"problem",
+            }
+        ],
+        default:[],
     },
 },{
     timestamps:true,

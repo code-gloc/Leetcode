@@ -6,11 +6,13 @@ import cookieParser from 'cookie-parser';
 import authRouter from './routes/userAuth.js';
 import problemRouter from './routes/problemCreator.js';
 import redisClient from './config/redis.js';
+import submissionRouter from './routes/submit.js';
 dotenv.config();
 app.use(express.json());    //to convert json data to object 
 app.use(cookieParser());  //to parse cookies from the request
 
 app.use("/user",authRouter);
+app.use("/submission", submissionRouter);
 app.use("/problem",problemRouter);
 
 

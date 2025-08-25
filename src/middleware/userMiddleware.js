@@ -17,7 +17,7 @@ const userMiddleware=async(req,res,next)=>{
         if(isBlocked){
             throw new Error("user is blocked");
         }
-        req.user=result;
+        req.result=result;
         next();
    }
    catch(err){
