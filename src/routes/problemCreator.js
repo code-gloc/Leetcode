@@ -3,7 +3,7 @@ const problemRouter=express.Router();
 import adminMiddleware from "../middleware/adminMiddleware.js";
 import userMiddleware from '../middleware/userMiddleware.js';
 import problemController from '../controllers/userProblem.js';
-const {createProblem,updateProblem,deleteProblem,getProblemByID,getAllProblems}=problemController;
+const {createProblem,updateProblem,deleteProblem,getProblemByID,getAllProblems,solvedAllProblems}=problemController;
 
 //need admin for access this route
 problemRouter.post("/create",adminMiddleware,createProblem);
@@ -15,7 +15,7 @@ problemRouter.delete("/delete/:id",adminMiddleware,deleteProblem);
 
 // //everyone can access this route
 
-// problemRouter.get("/solvedAllProblems/user",userMiddleware,solvedAllProblems);
+ problemRouter.get("/solvedAllProblems",userMiddleware,solvedAllProblems);
 
 problemRouter.get("/problemById/:id",userMiddleware,getProblemByID);
 

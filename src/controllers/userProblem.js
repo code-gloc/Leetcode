@@ -1,5 +1,6 @@
 import Problem from "../models/problem.js";
 import problemController from "../utils/problemUtility.js";
+import User from "../models/user.js";
 const{submitBatch,getLanguageById,submitToken}=problemController;
 const createProblem = async (req, res) => {
     const { title, description, difficulty, tags, visibleTestCases, hiddenTestCases, startCode, referenceSolution } = req.body;
@@ -222,13 +223,9 @@ const getAllProblems=async(req,res)=>{
 
 const solvedAllProblems=async(req,res)=>{
     try{
-        const userId = req.user.id;
-        const solvedProblems = await Problem.find({ solvedBy: userId });
-        if(!solvedProblems || solvedProblems.length === 0)
-        {
-            return res.status(404).send("No Solved Problems Found");
-        }
-        return res.status(200).send(solvedProblems);
+        const userId=req.result._id;
+        const user=await User.findById(userId).populate({path:"problemSolved",select:"_id title difficulty tags"});
+        return res.status(200).send(user.problemSolved);
     }
     catch(err){
         return res.status(500).send("Error Occured"+err);
@@ -240,5 +237,5 @@ const solvedAllProblems=async(req,res)=>{
 
 
 
-export default { createProblem, updateProblem,deleteProblem,getProblemByID,getAllProblems,};
+export default { createProblem, updateProblem,deleteProblem,getProblemByID,getAllProblems,solvedAllProblems};
 
