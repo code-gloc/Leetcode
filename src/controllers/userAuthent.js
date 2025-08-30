@@ -1,4 +1,5 @@
 import User from "../models/user.js";
+import Submission from "../models/submission.js";
 import bcrypt from "bcrypt";
 import validate from "../utils/validator.js";
 import jwt from "jsonwebtoken";
@@ -31,17 +32,24 @@ const register=async(req,res)=>{
         res.cookie("token",token,{
             maxAge:60*60*1000,// it is in milliseconds
             httpOnly:true, //to prevent client side access
-            secure:true, //to ensure the cookie is sent to the allowed domains
-            sameSite:"strict" //to prevent CSRF attacks 
+            secure:false,
+            sameSite:"strict" //to prevent CSRF attacks
         })
-        
+        const reply={
+            firstName:user.firstName,
+            email:user.email,
+            _id:user._id,
+        }
         //send the responce here 
-        res.status(201).send("user registered successfully");
+        res.status(201).json({
+            user:reply,
+            message:"user registered successfully"
+        });
 
       
     }
     catch(err){
-       res.status(400).send("Error:"+err);
+       res.status(400).json({ message: err.message });
     }
 }
 
@@ -78,8 +86,16 @@ const login =async(req,res)=>{
             sameSite:"strict"
         });
 
+        const reply={
+            firstName:user.firstName,
+            email:user.email,
+            _id:user._id,
+        }
         //send the responce here
-        res.status(200).send("user logged in successfully");
+        res.status(201).json({
+            user:reply,
+            message:"user logged in successfully"
+        });
     }
     catch(err){
         res.status(401).send("error:"+err);
@@ -148,5 +164,38 @@ const adminRegister=async(req,res)=>{
     }
 }
 
+const deleteProfile=async(req,res)=>{
+    try{
+        const userId=req.result._id;
+        //delete from userSchema 
+        await User.findByIdAndDelete(userId);
 
-export default {register,login,logout,adminRegister};
+        //also delete from submission Schema 
+
+        await Submission.deleteMany({userId});
+        res.status(200).send("User profile deleted successfully");
+    }
+    catch(err){
+        res.status(500).send("Error:"+err);
+    }
+}
+
+const checkAuth=async(req,res)=>{
+    try{
+        const reply={
+            firstName:req.result.firstName,
+            email:req.result.email,
+            _id:req.result._id,
+        }
+        res.status(201).json({
+            user:reply,
+            message:"user authenticated successfully"
+        })
+    }
+    catch(err){
+        res.status(500).send("Error:"+err);
+    }
+}
+
+
+export default {register,login,logout,adminRegister,deleteProfile,checkAuth};

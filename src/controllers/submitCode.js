@@ -1,5 +1,6 @@
 import Problem from "../models/problem.js";
 import Submission from "../models/submission.js";
+import rateLimitingMiddleware from "../middleware/rateLimitingMiddleware.js";
 import User from "../models/user.js";
 import submissionController from "../utils/problemUtility.js";
 const {submitBatch, getLanguageById, submitToken,submitResult} =submissionController;
@@ -103,4 +104,58 @@ const submitCode = async (req,res)=>{
     }
 
 }
-export default submitCode;
+
+//we will use same code in run code but we not save in database 
+const runCode=async(req,res)=>{
+   try{
+       const userId = req.result._id;
+       const problemId = req.params.id;
+
+       const {code,language} = req.body;
+
+      if(!userId||!code||!problemId||!language)
+        return res.status(400).send("Some field missing");
+
+    //    Fetch the problem from database
+       const problem =  await Problem.findById(problemId);
+    
+    //submit the code to judge0
+
+    const languageId = getLanguageById(language);
+
+    const submissions = problem.visibleTestCases.map((testcase)=>({
+        source_code:code,
+        language_id: languageId,
+        stdin: testcase.input,
+        expected_output: testcase.output
+    }));
+
+
+    const submitResult = await submitBatch(submissions);
+    
+    const resultToken = submitResult.map((value)=> value.token);
+
+    const testResult = await submitToken(resultToken);
+
+    //code shown when user run the code 
+    const formattedCode =testResult.map((res,idx)=>{
+      const testcase=problem.visibleTestCases[idx];
+      return {
+        Input:testcase.input,
+        Output:testcase.output.trim(),
+        Expected:res.stdout ? res.stdout.trim() : "",
+        status: res.status && res.status.description === "Accepted"
+          ? "Passed"
+          : res.status.description || "Error",
+      }
+    })
+
+    res.status(201).send(formattedCode);  
+   }
+
+    catch(err){
+      res.status(500).send("Internal Server Error "+ err);
+    }
+} 
+
+export default {submitCode,runCode};

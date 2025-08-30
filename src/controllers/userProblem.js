@@ -1,4 +1,5 @@
 import Problem from "../models/problem.js";
+import Submission from "../models/submission.js";
 import problemController from "../utils/problemUtility.js";
 import User from "../models/user.js";
 const{submitBatch,getLanguageById,submitToken}=problemController;
@@ -232,10 +233,31 @@ const solvedAllProblems=async(req,res)=>{
     }
 }
 
+const submittedProblems=async(req,res)=>{
+    try{
+        const userId=req.result._id;
+        const problemId=req.params.pid;
+        const submissions=await Submission.find({userId,problemId}).sort({updatedAt:-1});
+        if(submissions.length===0)
+        return res.status(404).send("No submissions found");
+
+        const filtered=submissions.map((submission)=>({
+            status:submission.status,
+            submissionTime: new Date(submission.updatedAt).toISOString().replace('T', ' ').slice(0, 19),
+            status:submission.status,
+            language: submission.language === "cpp" ? "C++" : submission.language,
+            runtime: submission.runtime +"sec",
+            memory: submission.memory +"KB",
+        }));
+
+        return res.status(200).send(filtered);
+    }
+    catch(err){
+        return res.status(500).send("Error Occured"+err);
+    }
+}
 
 
 
-
-
-export default { createProblem, updateProblem,deleteProblem,getProblemByID,getAllProblems,solvedAllProblems};
+export default { createProblem, updateProblem,deleteProblem,getProblemByID,getAllProblems,solvedAllProblems,submittedProblems};
 
