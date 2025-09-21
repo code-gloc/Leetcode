@@ -39,6 +39,7 @@ const register=async(req,res)=>{
             firstName:user.firstName,
             email:user.email,
             _id:user._id,
+            role:user.role,
         }
         //send the responce here 
         res.status(201).json({
@@ -82,7 +83,7 @@ const login =async(req,res)=>{
         res.cookie("token",token,{
             maxAge:60*60*1000,
             httpOnly:true,
-            secure:true,
+            secure:false,
             sameSite:"strict"
         });
 
@@ -90,6 +91,7 @@ const login =async(req,res)=>{
             firstName:user.firstName,
             email:user.email,
             _id:user._id,
+            role:user.role,
         }
         //send the responce here
         res.status(201).json({
@@ -116,7 +118,9 @@ const logout=async (req,res)=>{
          res.status(200).send("user logged out successfully");
     }
     catch(err){
+        console.log(err);
         res.status(401).send("error:"+err);
+       
     }
    
 }
@@ -186,6 +190,7 @@ const checkAuth=async(req,res)=>{
             firstName:req.result.firstName,
             email:req.result.email,
             _id:req.result._id,
+            role:req.result.role,
         }
         res.status(201).json({
             user:reply,

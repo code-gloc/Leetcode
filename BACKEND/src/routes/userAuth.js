@@ -1,6 +1,7 @@
 import express from 'express';
 import userAuthController from '../controllers/userAuthent.js';
 import userMiddleware from '../middleware/userMiddleware.js';
+
 import adminMiddleware from '../middleware/adminMiddleware.js';
 const { register, login,logout,adminRegister,deleteProfile,checkAuth } = userAuthController;
 const authRouter=express.Router();

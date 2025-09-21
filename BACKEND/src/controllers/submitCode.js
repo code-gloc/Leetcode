@@ -7,21 +7,28 @@ const {submitBatch, getLanguageById, submitToken,submitResult} =submissionContro
 
 const submitCode = async (req,res)=>{
    
-    
+    // 
     try{
+      
        const userId = req.result._id;
        const problemId = req.params.id;
 
-       const {code,language} = req.body;
+       let {code,language} = req.body;
 
       if(!userId||!code||!problemId||!language)
         return res.status(400).send("Some field missing");
+      
 
+      if(language==='cpp')
+        language='c++'
+      
+      console.log(language);
+      
     //    Fetch the problem from database
        const problem =  await Problem.findById(problemId);
     //    testcases(Hidden)
-
-  // store the values 
+    
+    //   Kya apne submission store kar du pehle....
     const submittedResult = await Submission.create({
           userId,
           problemId,
@@ -29,12 +36,12 @@ const submitCode = async (req,res)=>{
           language,
           status:'pending',
           testCasesTotal:problem.hiddenTestCases.length
-        })
+     })
 
-    //submit the code to judge0
-
+    //    Judge0 code ko submit karna hai
+    
     const languageId = getLanguageById(language);
-
+   
     const submissions = problem.hiddenTestCases.map((testcase)=>({
         source_code:code,
         language_id: languageId,
@@ -42,7 +49,7 @@ const submitCode = async (req,res)=>{
         expected_output: testcase.output
     }));
 
-
+    
     const submitResult = await submitBatch(submissions);
     
     const resultToken = submitResult.map((value)=> value.token);
@@ -50,7 +57,7 @@ const submitCode = async (req,res)=>{
     const testResult = await submitToken(resultToken);
     
 
-    //updated to submitted result 
+    // submittedResult ko update karo
     let testCasesPassed = 0;
     let runtime = 0;
     let memory = 0;
@@ -84,78 +91,103 @@ const submitCode = async (req,res)=>{
     submittedResult.memory = memory;
 
     await submittedResult.save();
+    
+    // ProblemId ko insert karenge userSchema ke problemSolved mein if it is not persent there.
+    
+    // req.result == user Information
 
-    //we have the problem id in userSchema if it is not present already 
-
-    if(!Array.isArray(req.result.problemSolved)){
-    req.result.problemSolved = [];
-   }
     if(!req.result.problemSolved.includes(problemId)){
-    req.result.problemSolved.push(problemId);
-    await req.result.save();
-  }
-
-
-    res.status(201).send(submittedResult);
+      req.result.problemSolved.push(problemId);
+      await req.result.save();
+    }
+    
+    const accepted = (status == 'accepted')
+    res.status(201).json({
+      accepted,
+      totalTestCases: submittedResult.testCasesTotal,
+      passedTestCases: testCasesPassed,
+      runtime,
+      memory
+    });
        
     }
     catch(err){
       res.status(500).send("Internal Server Error "+ err);
     }
-
 }
-
-//we will use same code in run code but we not save in database 
-const runCode=async(req,res)=>{
-   try{
-       const userId = req.result._id;
-       const problemId = req.params.id;
-
-       const {code,language} = req.body;
-
-      if(!userId||!code||!problemId||!language)
-        return res.status(400).send("Some field missing");
-
-    //    Fetch the problem from database
-       const problem =  await Problem.findById(problemId);
+const runCode = async(req,res)=>{
     
-    //submit the code to judge0
+     // 
+     try{
+      const userId = req.result._id;
+      const problemId = req.params.id;
 
-    const languageId = getLanguageById(language);
+      let {code,language} = req.body;
 
-    const submissions = problem.visibleTestCases.map((testcase)=>({
-        source_code:code,
-        language_id: languageId,
-        stdin: testcase.input,
-        expected_output: testcase.output
-    }));
+     if(!userId||!code||!problemId||!language)
+       return res.status(400).send("Some field missing");
+
+   //    Fetch the problem from database
+      const problem =  await Problem.findById(problemId);
+   //    testcases(Hidden)
+      if(language==='cpp')
+        language='c++'
+
+   //    Judge0 code ko submit karna hai
+
+   const languageId = getLanguageById(language);
+
+   const submissions = problem.visibleTestCases.map((testcase)=>({
+       source_code:code,
+       language_id: languageId,
+       stdin: testcase.input,
+       expected_output: testcase.output
+   }));
 
 
-    const submitResult = await submitBatch(submissions);
-    
-    const resultToken = submitResult.map((value)=> value.token);
+   const submitResult = await submitBatch(submissions);
+   
+   const resultToken = submitResult.map((value)=> value.token);
 
-    const testResult = await submitToken(resultToken);
+   const testResult = await submitToken(resultToken);
 
-    //code shown when user run the code 
-    const formattedCode =testResult.map((res,idx)=>{
-      const testcase=problem.visibleTestCases[idx];
-      return {
-        Input:testcase.input,
-        Output:testcase.output.trim(),
-        Expected:res.stdout ? res.stdout.trim() : "",
-        status: res.status && res.status.description === "Accepted"
-          ? "Passed"
-          : res.status.description || "Error",
-      }
-    })
+    let testCasesPassed = 0;
+    let runtime = 0;
+    let memory = 0;
+    let status = true;
+    let errorMessage = null;
 
-    res.status(201).send(formattedCode);  
+    for(const test of testResult){
+        if(test.status_id==3){
+           testCasesPassed++;
+           runtime = runtime+parseFloat(test.time)
+           memory = Math.max(memory,test.memory);
+        }else{
+          if(test.status_id==4){
+            status = false
+            errorMessage = test.stderr
+          }
+          else{
+            status = false
+            errorMessage = test.stderr
+          }
+        }
+    }
+
+   
+  
+   res.status(201).json({
+    success:status,
+    testCases: testResult,
+    runtime,
+    memory
+   });
+      
+   }
+   catch(err){
+     res.status(500).send("Internal Server Error "+ err);
    }
 
-    catch(err){
-      res.status(500).send("Internal Server Error "+ err);
-    }
-} 
+  }
 
 export default {submitCode,runCode};
