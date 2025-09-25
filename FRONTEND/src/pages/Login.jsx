@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router";
 import { useDispatch } from "react-redux";
 import { loginUser } from "../authSlice";
+import toast, { Toaster } from 'react-hot-toast';
 
 const loginSchema = z.object({
   email: z.string().email("Invalid Email"),
@@ -24,24 +25,131 @@ function Login() {
   } = useForm({ resolver: zodResolver(loginSchema) });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [loginError, setLoginError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (data) => {
     setLoading(true);
-    setLoginError("");
+    
+    // Show loading toast
+    const loadingToast = toast.loading('Signing you in...', {
+      style: {
+        borderRadius: '12px',
+        background: 'rgba(255, 255, 255, 0.1)',
+        color: '#fff',
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+      },
+    });
+    
     try {
       await dispatch(loginUser(data)).unwrap();
+      
+      // Success toast
+      toast.success('Welcome back! Login successful 🎉', {
+        id: loadingToast, // Replace loading toast
+        duration: 4000,
+        style: {
+          borderRadius: '12px',
+          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+          color: '#fff',
+          fontWeight: '500',
+        },
+        iconTheme: {
+          primary: '#fff',
+          secondary: '#10b981',
+        },
+      });
+      
       navigate("/");
     } catch (err) {
-      setLoginError("Login failed. Please check your credentials.");
+      // Handle different types of errors with specific toast messages
+      let errorMessage = "Login failed. Please try again.";
+      let toastStyle = {
+        borderRadius: '12px',
+        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+        color: '#fff',
+        fontWeight: '500',
+      };
+      
+      if (err.message) {
+        if (err.message.includes("invalid credentials") || 
+            err.message.includes("wrong password") ||
+            err.message.includes("incorrect password")) {
+          errorMessage = "❌ Invalid email or password";
+        } else if (err.message.includes("user not found") || 
+                   err.message.includes("email not found")) {
+          errorMessage = "🔍 No account found with this email";
+        } else if (err.message.includes("account locked") || 
+                   err.message.includes("account suspended")) {
+          errorMessage = "🔒 Account suspended. Contact support";
+        } else if (err.message.includes("network") || 
+                   err.message.includes("connection")) {
+          errorMessage = "🌐 Network error. Check your connection";
+        } else if (err.message.includes("server") || 
+                   err.status >= 500) {
+          errorMessage = "⚠️ Server error. Try again later";
+        } else {
+          errorMessage = `❌ ${err.message}`;
+        }
+      } else if (err.status) {
+        switch (err.status) {
+          case 401:
+            errorMessage = "❌ Invalid email or password";
+            break;
+          case 403:
+            errorMessage = "🚫 Access denied. Account may be suspended";
+            break;
+          case 404:
+            errorMessage = "🔍 No account found with this email";
+            break;
+          case 429:
+            errorMessage = "⏳ Too many attempts. Try again later";
+            break;
+          case 500:
+            errorMessage = "⚠️ Server error. Please try again later";
+            break;
+          default:
+            errorMessage = "❌ Login failed. Please try again";
+        }
+      }
+      
+      // Error toast
+      toast.error(errorMessage, {
+        id: loadingToast, // Replace loading toast
+        duration: 5000,
+        style: toastStyle,
+        iconTheme: {
+          primary: '#fff',
+          secondary: '#ef4444',
+        },
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
+    <>
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6 relative overflow-hidden">
+      {/* Toast Container */}
+      <Toaster 
+        position="top-center"
+        reverseOrder={false}
+        gutter={8}
+        containerClassName=""
+        containerStyle={{}}
+        toastOptions={{
+          className: '',
+          duration: 4000,
+          style: {
+            background: 'rgba(255, 255, 255, 0.1)',
+            color: '#fff',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+          },
+        }}
+      />
+
       {/* Animated background orbs */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
@@ -183,20 +291,6 @@ function Login() {
               </button>
             </motion.div>
 
-            {/* Login Error */}
-            <AnimatePresence>
-              {loginError && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="p-3 bg-red-500/10 border border-red-400/30 rounded-lg text-red-400 text-sm text-center"
-                >
-                  {loginError}
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             {/* Submit Button */}
             <motion.button
               initial={{ y: 20, opacity: 0 }}
@@ -276,6 +370,7 @@ function Login() {
         </div>
       </motion.div>
     </div>
+    </>
   );
 }
 

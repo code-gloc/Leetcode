@@ -1,4 +1,5 @@
 import {Routes, Route } from "react-router";
+import { Toaster } from "react-hot-toast";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Homepage from "./pages/Homepage";
@@ -42,6 +43,7 @@ function App(){
       <Route path="/admin/update" element={isAuthenticated&&user?.role=="admin" ? <AdminUpdate></AdminUpdate> : <Navigate to="/"/>}></Route>
       <Route path="/problem/:problemId" element={<ProblemPage></ProblemPage>}></Route>
     </Routes>
+    <Toaster position="bottom-center" reverseOrder={false}></Toaster>
   </>
   )
 }

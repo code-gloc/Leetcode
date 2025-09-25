@@ -8,6 +8,7 @@ import authRouter from './routes/userAuth.js';
 import problemRouter from './routes/problemCreator.js';
 import submissionRouter from './routes/submit.js';
 import redisClient from './config/redis.js';
+import aiRouter from './routes/aiChatting.js';
 
 
 const app = express();
@@ -25,6 +26,7 @@ app.use(cookieParser());    // to parse cookies from the request
 app.use("/user", authRouter);
 app.use("/submission", submissionRouter);
 app.use("/problem", problemRouter);
+app.use("/ai", aiRouter);
 
 const intializeConnection = async () => {
   try {
