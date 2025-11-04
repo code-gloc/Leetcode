@@ -2,6 +2,7 @@ import Problem from "../models/problem.js";
 import Submission from "../models/submission.js";
 import problemController from "../utils/problemUtility.js";
 import User from "../models/user.js";
+import SolutionVideo from "../models/solutionVideo.js";
 const{submitBatch,getLanguageById,submitToken}=problemController;
 const createProblem = async (req, res) => {
     const { title, description, difficulty, tags, visibleTestCases, hiddenTestCases, startCode, referenceSolution } = req.body;
@@ -74,6 +75,9 @@ const createProblem = async (req, res) => {
         res.status(401).send("Error Occured " + err)
     }
 }
+
+
+
 const updateProblem=async(req,res)=>{
    const {id}=req.params;
    const { title, description, difficulty, tags, visibleTestCases, hiddenTestCases, startCode, referenceSolution } = req.body;
@@ -172,24 +176,71 @@ const deleteProblem=async(req,res)=>{
     }
 
 }
-const getProblemByID=async(req,res)=>{
-    const {id}=req.params;
-    try{
-      if(!id)
-    {
-        return res.status(400).send("Problem id is not present");
+// const getProblemByID=async(req,res)=>{
+//     const {id}=req.params;
+//     try{
+//       if(!id)
+//     {
+//         return res.status(400).send("Problem id is not present");
+//     }
+//     const newProblem=await Problem.findById(id).select(' _id title description difficulty tags visibleTestCases startCode referenceSolution');
+    
+//     if(!newProblem)
+//     {
+//         return res.status(404).send("Problem not found");
+//     }
+//     //fetch video solution if present
+//     const videos=await SolutionVideo.find({problemId:id});
+    
+//     if(videos)
+//     {
+//         newProblem.secureUrl=secureUrl;
+//         newProblem.thumbnailUrl=thumbnailUrl;
+//         newProblem.duration=duration;
+//         newProblem.cloudinaryPublicId=cloudinaryPublicId;
+//         return res.status(200).send(newProblem);
+//     }
+//     return res.status(200).send(newProblem);
+//     }
+//     catch(err){
+//        return res.status(500).send("Error Occured"+err);
+//     }
+// }
+
+
+const getProblemByID = async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (!id) {
+      return res.status(400).send("Problem id is not present");
     }
-    const newProblem=await Problem.findById(id).select(' _id title description difficulty tags visibleTestCases startCode referenceSolution');
-    if(!newProblem)
-    {
-        return res.status(404).send("Problem not found");
+
+    const newProblem = await Problem.findById(id).select(
+      ' _id title description difficulty tags visibleTestCases startCode referenceSolution'
+    );
+
+    if (!newProblem) {
+      return res.status(404).send("Problem not found");
     }
+
+    // fetch video solution if present
+    const videos = await SolutionVideo.find({ problemId: id });
+
+    // ---- FIXED PART ----
+    if (videos && videos.length > 0) {
+      const video = videos[0];                 // take first video
+      newProblem.secureUrl          = video.secureUrl;
+      newProblem.thumbnailUrl       = video.thumbnailUrl;
+      newProblem.duration           = video.duration;
+      newProblem.cloudinaryPublicId = video.cloudinaryPublicId;
+    }
+    // --------------------
+
     return res.status(200).send(newProblem);
-    }
-    catch(err){
-       return res.status(500).send("Error Occured"+err);
-    }
-}
+  } catch (err) {
+    return res.status(500).send("Error Occured" + err);
+  }
+};
 const getAllProblems=async(req,res)=>{
     try {
     // Get page & limit from query (default: page=1, limit=10)

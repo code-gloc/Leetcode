@@ -10,12 +10,151 @@ import {
   FiTag,
   FiX,
   FiLoader,
-  FiAlertCircle
+  FiAlertCircle,
+  FiUpload,
+  FiVideo,
+  FiFile,
+  FiCheck
 } from 'react-icons/fi';
 
-// Custom Confirmation Modal Component
-const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, problemTitle, isLoading }) => {
+// Upload Video Modal Component
+const UploadVideoModal = ({ isOpen, onClose, problem, onUploadSuccess }) => {
+  const [videoFile, setVideoFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStep, setUploadStep] = useState('select'); // 'select', 'uploading', 'saving'
+  const [error, setError] = useState(null);
+  const [uploadedVideoData, setUploadedVideoData] = useState(null);
+
   if (!isOpen) return null;
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      const validTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', 'video/x-msvideo'];
+      if (!validTypes.includes(file.type)) {
+        setError('Please select a valid video file (MP4, WebM, OGG, MOV, AVI)');
+        return;
+      }
+      // Validate file size (max 500MB)
+      if (file.size > 500 * 1024 * 1024) {
+        setError('File size must be less than 500MB');
+        return;
+      }
+      setVideoFile(file);
+      setError(null);
+    }
+  };
+
+  const getUploadSignature = async () => {
+    try {
+      const { data } = await axiosClient.get(`/video/create/${problem._id}`);
+      return data;
+    } catch (err) {
+      throw new Error(err.response?.data?.message || 'Failed to get upload signature');
+    }
+  };
+
+  const uploadToCloudinary = async (signature, timestamp, publicId, apiKey, cloudName) => {
+    const formData = new FormData();
+    formData.append('file', videoFile);
+    formData.append('api_key', apiKey);
+    formData.append('timestamp', timestamp);
+    formData.append('signature', signature);
+    formData.append('public_id', publicId);
+
+    try {
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`,
+        {
+          method: 'POST',
+          body: formData,
+          onuploadprogress: (event) => {
+            if (event.lengthComputable) {
+              const percentCompleted = Math.round((event.loaded * 100) / event.total);
+              setUploadProgress(percentCompleted);
+            }
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to upload to Cloudinary');
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (err) {
+      throw new Error(err.message || 'Cloudinary upload failed');
+    }
+  };
+
+  const saveVideoMetadata = async (cloudinaryData) => {
+    try {
+      const payload = {
+        problemId: problem._id,
+        cloudinaryPublicId: cloudinaryData.public_id,
+        secureUrl: cloudinaryData.secure_url,
+        duration: cloudinaryData.duration || 0,
+      };
+
+      const { data } = await axiosClient.post('/video/save', payload);
+      return data;
+    } catch (err) {
+      throw new Error(err.response?.data?.error || 'Failed to save video metadata');
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!videoFile || !problem) {
+      setError('Please select a video file');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      setError(null);
+      setUploadProgress(0);
+
+      // Step 1: Get upload signature
+      setUploadStep('uploading');
+      const signatureData = await getUploadSignature();
+
+      // Step 2: Upload to Cloudinary with progress tracking
+      const cloudinaryResponse = await uploadToCloudinary(
+        signatureData.signature,
+        signatureData.timestamp,
+        signatureData.public_id,
+        signatureData.api_key,
+        signatureData.cloud_name
+      );
+
+      // Step 3: Save metadata to database
+      setUploadStep('saving');
+      await saveVideoMetadata(cloudinaryResponse);
+
+      // Success
+      onUploadSuccess(`Video uploaded successfully for "${problem.title}"!`);
+      handleClose();
+    } catch (err) {
+      console.error('Upload error:', err);
+      setError(err.message || 'Failed to upload video');
+      setUploadStep('select');
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleClose = () => {
+    setVideoFile(null);
+    setUploadProgress(0);
+    setUploadStep('select');
+    setError(null);
+    setUploadedVideoData(null);
+    onClose();
+  };
 
   return (
     <AnimatePresence>
@@ -25,11 +164,180 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, problemTitle, isL
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          onClick={handleClose}
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        />
+
+        {/* Modal */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.8, y: 20 }}
+          className="relative w-full max-w-2xl mx-auto"
+        >
+          <div className="backdrop-blur-xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-purple-500/30 rounded-3xl p-8 shadow-2xl">
+            {/* Icon */}
+            <div className="flex justify-center mb-6">
+              <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
+                <FiVideo className="text-white text-3xl" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-2xl font-bold text-white text-center mb-4">
+              Upload Solution Video
+            </h3>
+
+            {/* Problem Title */}
+            <div className="bg-white/10 border border-white/20 rounded-xl p-3 mb-6">
+              <p className="text-white font-semibold text-center break-words">
+                "{problem?.title}"
+              </p>
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="backdrop-blur-xl bg-red-500/20 border border-red-500/30 rounded-xl p-4 mb-6"
+              >
+                <div className="flex items-center">
+                  <FiAlertCircle className="text-red-400 mr-3" />
+                  <span className="text-red-400 text-sm">{error}</span>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Upload Section */}
+            {uploadStep === 'select' ? (
+              <div className="mb-6">
+                <label className="block w-full">
+                  <div className="border-2 border-dashed border-white/30 rounded-xl p-8 text-center hover:border-purple-400/50 transition-all duration-200 cursor-pointer bg-white/5 hover:bg-white/10">
+                    <FiUpload className="text-white text-4xl mx-auto mb-4" />
+                    <p className="text-white font-medium mb-2">
+                      {videoFile ? videoFile.name : 'Click to select video file'}
+                    </p>
+                    <p className="text-gray-400 text-sm">
+                      MP4, WebM, OGG, MOV, AVI (Max 500MB)
+                    </p>
+                  </div>
+                  <input
+                    type="file"
+                    accept="video/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    disabled={isUploading}
+                  />
+                </label>
+              </div>
+            ) : (
+              <div className="mb-6">
+                <div className="space-y-4">
+                  {/* Step 1: Uploading */}
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      uploadStep === 'uploading' ? 'bg-purple-500' : 'bg-green-500'
+                    }`}>
+                      {uploadStep === 'uploading' ? (
+                        <FiLoader className="text-white animate-spin" />
+                      ) : (
+                        <FiCheck className="text-white" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-white font-medium">Uploading to Cloudinary</p>
+                      {uploadStep === 'uploading' && (
+                        <div className="mt-2 bg-white/10 rounded-full h-2 overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${uploadProgress}%` }}
+                            className="h-full bg-gradient-to-r from-purple-500 to-cyan-500"
+                          />
+                        </div>
+                      )}
+                      {uploadStep === 'uploading' && (
+                        <p className="text-gray-400 text-sm mt-1">{uploadProgress}%</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Step 2: Saving metadata */}
+                  <div className="flex items-center space-x-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      uploadStep === 'saving' ? 'bg-purple-500' : uploadStep === 'uploading' ? 'bg-gray-600' : 'bg-green-500'
+                    }`}>
+                      {uploadStep === 'saving' ? (
+                        <FiLoader className="text-white animate-spin" />
+                      ) : uploadStep === 'uploading' ? (
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                      ) : (
+                        <FiCheck className="text-white" />
+                      )}
+                    </div>
+                    <div>
+                      <p className={`font-medium ${
+                        uploadStep === 'saving' ? 'text-white' : uploadStep === 'uploading' ? 'text-gray-400' : 'text-gray-300'
+                      }`}>
+                        Saving metadata
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Buttons */}
+            {uploadStep === 'select' ? (
+              <div className="flex space-x-4">
+                <button
+                  onClick={handleClose}
+                  disabled={isUploading}
+                  className="flex-1 px-6 py-3 bg-white/10 border border-white/20 text-white font-semibold rounded-xl hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={handleUpload}
+                  disabled={!videoFile || isUploading}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-cyan-500 text-white font-semibold rounded-xl hover:from-purple-600 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-purple-400/50 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:transform-none flex items-center justify-center"
+                >
+                  <FiUpload className="w-4 h-4 mr-2" />
+                  Upload
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleClose}
+                disabled={isUploading}
+                className="w-full px-6 py-3 bg-white/10 border border-white/20 text-white font-semibold rounded-xl hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200 disabled:opacity-50"
+              >
+                {isUploading ? 'Uploading...' : 'Close'}
+              </button>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+};
+
+// Delete Confirmation Modal Component
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, problemTitle, isLoading }) => {
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           onClick={onClose}
           className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         />
-        
-        {/* Modal */}
+
         <motion.div
           initial={{ opacity: 0, scale: 0.8, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -37,22 +345,19 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, problemTitle, isL
           className="relative w-full max-w-md mx-auto"
         >
           <div className="backdrop-blur-xl bg-gradient-to-br from-red-500/20 to-pink-500/20 border border-red-500/30 rounded-3xl p-8 shadow-2xl">
-            {/* Warning Icon */}
             <div className="flex justify-center mb-6">
               <div className="w-20 h-20 bg-gradient-to-r from-red-500 to-pink-500 rounded-full flex items-center justify-center shadow-lg animate-pulse">
                 <FiAlertTriangle className="text-white text-3xl" />
               </div>
             </div>
 
-            {/* Title */}
             <h3 className="text-2xl font-bold text-white text-center mb-4">
-              Delete Problem?
+              Delete Video?
             </h3>
 
-            {/* Message */}
             <div className="text-center mb-8">
               <p className="text-gray-300 mb-3">
-                Are you sure you want to delete
+                Are you sure you want to delete the video for
               </p>
               <div className="bg-white/10 border border-white/20 rounded-xl p-3 mb-3">
                 <p className="text-white font-semibold text-lg break-words">
@@ -64,9 +369,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, problemTitle, isL
               </p>
             </div>
 
-            {/* Buttons */}
             <div className="flex space-x-4">
-              {/* Cancel Button */}
               <button
                 onClick={onClose}
                 disabled={isLoading}
@@ -75,7 +378,6 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, problemTitle, isL
                 Cancel
               </button>
 
-              {/* Delete Button */}
               <button
                 onClick={onConfirm}
                 disabled={isLoading}
@@ -101,7 +403,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, problemTitle, isL
   );
 };
 
-// Custom Toast Component
+// Toast Component
 const Toast = ({ message, type, isVisible, onClose }) => {
   useEffect(() => {
     if (isVisible) {
@@ -120,8 +422,8 @@ const Toast = ({ message, type, isVisible, onClose }) => {
           className="fixed top-6 left-1/2 z-50 transform -translate-x-1/2"
         >
           <div className={`backdrop-blur-xl border rounded-2xl p-4 shadow-2xl ${
-            type === 'success' 
-              ? 'bg-green-500/20 border-green-500/30' 
+            type === 'success'
+              ? 'bg-green-500/20 border-green-500/30'
               : 'bg-red-500/20 border-red-500/30'
           }`}>
             <div className="flex items-center">
@@ -129,7 +431,7 @@ const Toast = ({ message, type, isVisible, onClose }) => {
                 type === 'success' ? 'bg-green-500' : 'bg-red-500'
               }`}>
                 {type === 'success' ? (
-                  <FiTrash2 className="text-white text-sm" />
+                  <FiCheck className="text-white text-sm" />
                 ) : (
                   <FiAlertCircle className="text-white text-sm" />
                 )}
@@ -149,7 +451,7 @@ const Toast = ({ message, type, isVisible, onClose }) => {
   );
 };
 
-const AdminDelete = () => {
+const AdminVideo = () => {
   const [problems, setProblems] = useState([]);
   const [filteredProblems, setFilteredProblems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -157,13 +459,38 @@ const AdminDelete = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('all');
   const [deleteLoading, setDeleteLoading] = useState(null);
-  
+
   // Modal states
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [problemToDelete, setProblemToDelete] = useState(null);
-  
+  const [problemToUpload, setProblemToUpload] = useState(null);
+
   // Toast states
   const [toast, setToast] = useState({ message: '', type: '', isVisible: false });
+
+  const getErrorMessage = (error) => {
+    if (error.response) {
+      const { status, data } = error.response;
+
+      if (data?.error) return data.error;
+      if (data?.message) return data.message;
+
+      switch (status) {
+        case 400: return 'Bad request - please check your input';
+        case 401: return 'Unauthorized - please log in again';
+        case 403: return 'Forbidden - you don\'t have permission';
+        case 404: return 'Resource not found';
+        case 409: return 'Video already exists for this problem';
+        case 500: return 'Internal server error - please try again later';
+        default: return `Request failed with status ${status}`;
+      }
+    } else if (error.request) {
+      return 'Network error - please check your connection';
+    } else {
+      return error.message || 'An unexpected error occurred';
+    }
+  };
 
   const showToast = (message, type) => {
     setToast({ message, type, isVisible: true });
@@ -186,9 +513,11 @@ const AdminDelete = () => {
       setLoading(true);
       const { data } = await axiosClient.get('/problem/getAllProblems');
       setProblems(data.problems || []);
+      setError(null);
     } catch (err) {
-      setError('Failed to fetch problems');
-      console.error(err);
+      const errorMessage = getErrorMessage(err);
+      setError(errorMessage);
+      console.error('Fetch problems error:', err);
     } finally {
       setLoading(false);
     }
@@ -213,25 +542,29 @@ const AdminDelete = () => {
     setShowDeleteModal(true);
   };
 
+  const handleUploadClick = (problem) => {
+    setProblemToUpload(problem);
+    setShowUploadModal(true);
+  };
+
   const handleDeleteConfirm = async () => {
     if (!problemToDelete) return;
-    
+
     try {
       setDeleteLoading(problemToDelete._id);
-      await axiosClient.delete(`/problem/delete/${problemToDelete._id}`);
+      await axiosClient.delete(`/video/delete/${problemToDelete._id}`);
       setProblems(problems.filter(problem => problem._id !== problemToDelete._id));
-      
-      // Show success toast
-      showToast(`"${problemToDelete.title}" deleted successfully!`, 'success');
-      
-      // Close modal
+
+      showToast(`Video for "${problemToDelete.title}" deleted successfully!`, 'success');
+
       setShowDeleteModal(false);
       setProblemToDelete(null);
       setError(null);
-    } catch (err) {
-      setError('Failed to delete problem');
-      showToast('Failed to delete problem', 'error');
-      console.error(err);
+    } catch (error) {
+      console.error('Delete error:', error);
+      const errorMessage = getErrorMessage(error);
+      setError(errorMessage);
+      showToast(errorMessage, 'error');
     } finally {
       setDeleteLoading(null);
     }
@@ -240,6 +573,11 @@ const AdminDelete = () => {
   const handleDeleteCancel = () => {
     setShowDeleteModal(false);
     setProblemToDelete(null);
+  };
+
+  const handleUploadSuccess = (message) => {
+    showToast(message, 'success');
+    fetchProblems(); // Refresh problems list
   };
 
   const getDifficultyColor = (difficulty) => {
@@ -271,11 +609,11 @@ const AdminDelete = () => {
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
-        {/* Background Effects
+        {/* Background Effects */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse"></div>
           <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-cyan-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
-        </div> */}
+        </div>
 
         <div className="max-w-7xl mx-auto relative z-10">
           {/* Header */}
@@ -285,12 +623,12 @@ const AdminDelete = () => {
             className="text-center mb-8"
           >
             <div className="flex items-center justify-center mb-4">
-              <div className="w-16 h-16 bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl flex items-center justify-center mr-4 shadow-2xl">
-                <FiTrash2 className="text-white text-2xl" />
+              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-2xl flex items-center justify-center mr-4 shadow-2xl">
+                <FiVideo className="text-white text-2xl" />
               </div>
               <div>
-                <h1 className="text-4xl font-bold text-white">Delete Problems</h1>
-                <p className="text-gray-300 mt-2">Remove problems from your platform</p>
+                <h1 className="text-4xl font-bold text-white">Manage Solution Videos</h1>
+                <p className="text-gray-300 mt-2">Upload and manage problem solution videos on Cloudinary</p>
               </div>
             </div>
           </motion.div>
@@ -326,7 +664,6 @@ const AdminDelete = () => {
             className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 mb-8"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Search */}
               <div className="relative">
                 <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
@@ -338,7 +675,6 @@ const AdminDelete = () => {
                 />
               </div>
 
-              {/* Difficulty Filter */}
               <div className="relative">
                 <FiFilter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <select
@@ -354,7 +690,6 @@ const AdminDelete = () => {
               </div>
             </div>
 
-            {/* Stats */}
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
               <div className="flex items-center space-x-6">
                 <div className="flex items-center">
@@ -399,36 +734,43 @@ const AdminDelete = () => {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, x: -100 }}
                     transition={{ delay: index * 0.05 }}
-                    className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 hover:bg-white/20 hover:border-red-500/30 transition-all duration-300"
+                    className="group backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 hover:bg-white/20 hover:border-purple-500/30 transition-all duration-300"
                   >
                     <div className="flex items-center justify-between">
-                      {/* Problem Info */}
                       <div className="flex-1">
                         <div className="flex items-center mb-2">
                           <span className="text-gray-400 text-sm mr-4">#{index + 1}</span>
-                          <h3 className="text-white text-lg font-semibold group-hover:text-red-400 transition-colors">
+                          <h3 className="text-white text-lg font-semibold group-hover:text-purple-400 transition-colors">
                             {problem.title}
                           </h3>
                         </div>
-                        
+
                         <div className="flex items-center space-x-4">
-                          {/* Difficulty Badge */}
                           <div className={`inline-flex items-center px-3 py-1 rounded-full border text-sm font-medium ${getDifficultyColor(problem.difficulty)}`}>
                             <span>{problem.difficulty}</span>
                           </div>
-                          
-                          {/* Tags */}
+
                           <div className="flex items-center">
                             <FiTag className="text-gray-400 mr-2" />
                             <span className="text-gray-300 text-sm bg-gray-700/50 px-3 py-1 rounded-full">
-                              {problem.tags}
+                              {problem.tags || 'N/A'}
                             </span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Delete Button */}
-                      <div className="ml-6">
+                      {/* Action Buttons */}
+                      <div className="flex items-center space-x-3 ml-6">
+                        {/* Upload Button */}
+                        <button
+                          onClick={() => handleUploadClick(problem)}
+                          className="group/btn relative inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-500 to-cyan-500 text-white font-semibold rounded-xl hover:from-purple-600 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-purple-400/50 transition-all duration-300 transform hover:scale-105"
+                        >
+                          <FiUpload className="w-4 h-4 mr-2" />
+                          <span>Upload</span>
+                        </button>
+
+                        {/* Delete Button */}
                         <button
                           onClick={() => handleDeleteClick(problem)}
                           disabled={deleteLoading === problem._id}
@@ -447,7 +789,15 @@ const AdminDelete = () => {
         </div>
       </div>
 
-      {/* Custom Delete Confirmation Modal */}
+      {/* Upload Modal */}
+      <UploadVideoModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        problem={problemToUpload}
+        onUploadSuccess={handleUploadSuccess}
+      />
+
+      {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal
         isOpen={showDeleteModal}
         onClose={handleDeleteCancel}
@@ -467,4 +817,4 @@ const AdminDelete = () => {
   );
 };
 
-export default AdminDelete;
+export default AdminVideo;

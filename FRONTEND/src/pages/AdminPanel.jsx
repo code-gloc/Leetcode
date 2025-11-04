@@ -11,7 +11,8 @@ import {
   FiActivity,
   FiUsers,
   FiBarChart,
-  FiStar
+  FiStar,
+  FiVideo
 } from 'react-icons/fi';
 
 function AdminPanel() {
@@ -53,6 +54,19 @@ function AdminPanel() {
       stats: '12 Removed',
       iconBg: 'bg-red-500/20',
       borderColor: 'border-red-500/30'
+    },
+
+    {
+      id: 'video',
+      title: 'Manage Videos',
+      description: 'Upload, update, or delete video solutions',
+      icon: FiVideo,
+      gradient: 'from-red-500 to-pink-500',
+      bgGradient: 'from-red-500/10 to-pink-500/10',
+      route: '/admin/video',
+      stats: '12 Videos',
+      iconBg: 'bg-red-500/20',
+      borderColor: 'border-red-500/30'
     }
   ];
 
@@ -66,11 +80,11 @@ function AdminPanel() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
       {/* Background Effects */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      {/* <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-cyan-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500 rounded-full mix-blend-multiply filter blur-xl opacity-5 animate-pulse" style={{ animationDelay: '2s' }}></div>
-      </div>
+      </div> */}
 
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header */}
@@ -98,7 +112,7 @@ function AdminPanel() {
         </motion.div>
 
         {/* Main Admin Options */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-12">
           {adminOptions.map((option, idx) => {
             const IconComp = option.icon;
             return (

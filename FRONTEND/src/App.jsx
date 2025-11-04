@@ -13,6 +13,7 @@ import authReducer from "./authSlice";
 import AdminCreate from "./components/AdminCreate";
 import AdminDelete from "./components/AdminDelete";
 import AdminUpdate from "./components/AdminUpdate";
+import AdminVideo from "./components/adminVideo";
 
 function App(){
 
@@ -41,6 +42,7 @@ function App(){
       { <Route path="/admin/create" element={isAuthenticated&&user?.role=="admin" ? <AdminCreate></AdminCreate> : <Navigate to="/"/>}></Route>}
       <Route path="/admin/delete" element={isAuthenticated&&user?.role=="admin" ? <AdminDelete></AdminDelete> : <Navigate to="/"/>}></Route>
       <Route path="/admin/update" element={isAuthenticated&&user?.role=="admin" ? <AdminUpdate></AdminUpdate> : <Navigate to="/"/>}></Route>
+      <Route path="/admin/video" element={isAuthenticated&&user?.role=="admin" ? <AdminVideo></AdminVideo>:<Navigate to="/"/>}></Route>
       <Route path="/problem/:problemId" element={<ProblemPage></ProblemPage>}></Route>
     </Routes>
     <Toaster position="bottom-center" reverseOrder={false}></Toaster>

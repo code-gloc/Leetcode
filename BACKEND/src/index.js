@@ -9,6 +9,7 @@ import problemRouter from './routes/problemCreator.js';
 import submissionRouter from './routes/submit.js';
 import redisClient from './config/redis.js';
 import aiRouter from './routes/aiChatting.js';
+import videoRouter from './routes/videoCreator.js';
 
 
 const app = express();
@@ -27,6 +28,7 @@ app.use("/user", authRouter);
 app.use("/submission", submissionRouter);
 app.use("/problem", problemRouter);
 app.use("/ai", aiRouter);
+app.use("/video", videoRouter);
 
 const intializeConnection = async () => {
   try {
