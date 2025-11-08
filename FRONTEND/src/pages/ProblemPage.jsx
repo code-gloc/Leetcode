@@ -4,6 +4,7 @@ import Editor from '@monaco-editor/react';
 import { useParams } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import axiosClient from "../utils/axiosClient";
+import Editorial from '../components/editorials'; 
 import ChatAi from '../components/ChatAi';
 import {
   FiPlay,
@@ -330,21 +331,64 @@ const ProblemPage = () => {
                     </div>
                   )}
 
-                  {/* Other tabs content with enhanced styling */}
-                  {activeLeftTab === 'editorial' && (
-                    <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6 shadow-xl">
-                      <h2 className="text-xl font-bold text-white mb-4 flex items-center">
-                        <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-violet-600 rounded-lg flex items-center justify-center mr-3">
-                          <FiBook className="w-3 h-3 text-white" />
-                        </div>
-                        Editorial
-                      </h2>
-                      <div className="text-slate-300 leading-relaxed">
-                        Detailed editorial content with step-by-step solution approach will be available here.
-                      </div>
-                    </div>
-                  )}
+                  {/* {activeLeftTab === 'editorial' && (
+            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6 shadow-xl">
+            <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+            <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-violet-600 rounded-lg flex items-center justify-center mr-3">
+           <FiBook className="w-3 h-3 text-white" />
+        </div>
+        Editorial
+      </h2>
+       <div className="text-slate-300 leading-relaxed">
+        {problem?.secureUrl ? (
+        <Editorial 
+          secureUrl={problem.secureUrl} 
+          thumbnailUrl={problem.thumbnailUrl} 
+          duration={problem.duration} 
+        />
+      ) : (
+        <div className="bg-slate-900/50 border border-slate-800/50 rounded-xl p-8 text-center">
+          <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <FiBook className="w-8 h-8 text-slate-400" />
+          </div>
+          <h4 className="text-white font-semibold mb-2">No Editorial Available</h4>
+          <p className="text-slate-400">Editorial video hasn't been uploaded yet for this problem.</p>
+        </div>
+      )}
+    </div>
+  </div>
+)} */}
 
+                 {activeLeftTab === 'editorial' && (
+      <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6 shadow-xl">
+      <h2 className="text-xl font-bold text-white mb-4 flex items-center">
+       <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-violet-600 rounded-lg flex items-center justify-center mr-3">
+        <FiBook className="w-3 h-3 text-white" />
+       </div>
+      Editorial
+    </h2>
+    <div className="text-slate-300 leading-relaxed">
+      {problem?.secureUrl ? (
+        <Editorial 
+          secureUrl={problem.secureUrl} 
+          thumbnailUrl={problem.thumbnailUrl} 
+          duration={problem.duration}
+          videoType={problem.videoType} // Add this
+        />
+      ) : (
+        <div className="bg-slate-900/50 border border-slate-800/50 rounded-xl p-8 text-center">
+          <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <FiBook className="w-8 h-8 text-slate-400" />
+          </div>
+          <h4 className="text-white font-semibold mb-2">No Editorial Available</h4>
+          <p className="text-slate-400">Editorial video hasn't been uploaded yet for this problem.</p>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
+                  
                   {activeLeftTab === 'solutions' && (
                     <div className="space-y-4">
                       <h2 className="text-xl font-bold text-white mb-4 flex items-center">

@@ -17,16 +17,39 @@ import {
   FiCheck
 } from 'react-icons/fi';
 
-// Upload Video Modal Component
+// Upload Video Modal Component with YouTube URL support
 const UploadVideoModal = ({ isOpen, onClose, problem, onUploadSuccess }) => {
+  const [uploadMethod, setUploadMethod] = useState('file'); // 'file' or 'youtube'
   const [videoFile, setVideoFile] = useState(null);
+  const [youtubeUrl, setYoutubeUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStep, setUploadStep] = useState('select'); // 'select', 'uploading', 'saving'
   const [error, setError] = useState(null);
-  const [uploadedVideoData, setUploadedVideoData] = useState(null);
 
   if (!isOpen) return null;
+
+  // Validate YouTube URL
+  const isValidYoutubeUrl = (url) => {
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/(watch\?v=|embed\/|v\/)?([a-zA-Z0-9_-]{11})/;
+    return youtubeRegex.test(url);
+  };
+
+  // Extract YouTube video ID
+  const getYoutubeVideoId = (url) => {
+    const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+    return match ? match[1] : null;
+  };
+
+  // Get YouTube thumbnail
+  const getYoutubeThumbnail = (videoId) => {
+    return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+  };
+
+  // Get YouTube embed URL
+  const getYoutubeEmbedUrl = (videoId) => {
+    return `https://www.youtube.com/embed/${videoId}`;
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -43,6 +66,17 @@ const UploadVideoModal = ({ isOpen, onClose, problem, onUploadSuccess }) => {
         return;
       }
       setVideoFile(file);
+      setError(null);
+    }
+  };
+
+  const handleYoutubeUrlChange = (e) => {
+    const url = e.target.value;
+    setYoutubeUrl(url);
+    
+    if (url && !isValidYoutubeUrl(url)) {
+      setError('Please enter a valid YouTube URL');
+    } else {
       setError(null);
     }
   };
@@ -70,12 +104,6 @@ const UploadVideoModal = ({ isOpen, onClose, problem, onUploadSuccess }) => {
         {
           method: 'POST',
           body: formData,
-          onuploadprogress: (event) => {
-            if (event.lengthComputable) {
-              const percentCompleted = Math.round((event.loaded * 100) / event.total);
-              setUploadProgress(percentCompleted);
-            }
-          },
         }
       );
 
@@ -90,13 +118,11 @@ const UploadVideoModal = ({ isOpen, onClose, problem, onUploadSuccess }) => {
     }
   };
 
-  const saveVideoMetadata = async (cloudinaryData) => {
+  const saveVideoMetadata = async (videoData) => {
     try {
       const payload = {
         problemId: problem._id,
-        cloudinaryPublicId: cloudinaryData.public_id,
-        secureUrl: cloudinaryData.secure_url,
-        duration: cloudinaryData.duration || 0,
+        ...videoData
       };
 
       const { data } = await axiosClient.post('/video/save', payload);
@@ -106,8 +132,8 @@ const UploadVideoModal = ({ isOpen, onClose, problem, onUploadSuccess }) => {
     }
   };
 
-  const handleUpload = async () => {
-    if (!videoFile || !problem) {
+  const handleFileUpload = async () => {
+    if (!videoFile) {
       setError('Please select a video file');
       return;
     }
@@ -132,7 +158,12 @@ const UploadVideoModal = ({ isOpen, onClose, problem, onUploadSuccess }) => {
 
       // Step 3: Save metadata to database
       setUploadStep('saving');
-      await saveVideoMetadata(cloudinaryResponse);
+      await saveVideoMetadata({
+        cloudinaryPublicId: cloudinaryResponse.public_id,
+        secureUrl: cloudinaryResponse.secure_url,
+        duration: cloudinaryResponse.duration || 0,
+        videoType: 'cloudinary'
+      });
 
       // Success
       onUploadSuccess(`Video uploaded successfully for "${problem.title}"!`);
@@ -147,12 +178,63 @@ const UploadVideoModal = ({ isOpen, onClose, problem, onUploadSuccess }) => {
     }
   };
 
+  const handleYoutubeUpload = async () => {
+    if (!youtubeUrl) {
+      setError('Please enter a YouTube URL');
+      return;
+    }
+
+    if (!isValidYoutubeUrl(youtubeUrl)) {
+      setError('Please enter a valid YouTube URL');
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      setError(null);
+      setUploadStep('saving');
+
+      const videoId = getYoutubeVideoId(youtubeUrl);
+      const thumbnailUrl = getYoutubeThumbnail(videoId);
+      const embedUrl = getYoutubeEmbedUrl(videoId);
+
+      // Save YouTube video metadata
+      await saveVideoMetadata({
+        secureUrl: embedUrl,
+        thumbnailUrl: thumbnailUrl,
+        duration: 0, // YouTube videos don't have duration in this implementation
+        videoType: 'youtube',
+        youtubeVideoId: videoId,
+        youtubeUrl: youtubeUrl
+      });
+
+      // Success
+      onUploadSuccess(`YouTube video linked successfully for "${problem.title}"!`);
+      handleClose();
+    } catch (err) {
+      console.error('YouTube upload error:', err);
+      setError(err.message || 'Failed to save YouTube video');
+      setUploadStep('select');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleUpload = () => {
+    if (uploadMethod === 'file') {
+      handleFileUpload();
+    } else {
+      handleYoutubeUpload();
+    }
+  };
+
   const handleClose = () => {
     setVideoFile(null);
+    setYoutubeUrl('');
     setUploadProgress(0);
     setUploadStep('select');
     setError(null);
-    setUploadedVideoData(null);
+    setUploadMethod('file');
     onClose();
   };
 
@@ -195,6 +277,34 @@ const UploadVideoModal = ({ isOpen, onClose, problem, onUploadSuccess }) => {
               </p>
             </div>
 
+            {/* Upload Method Toggle */}
+            {uploadStep === 'select' && (
+              <div className="flex space-x-2 mb-6 bg-white/5 p-1 rounded-xl">
+                <button
+                  onClick={() => setUploadMethod('file')}
+                  className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                    uploadMethod === 'file'
+                      ? 'bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-lg'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <FiUpload className="inline mr-2" />
+                  Upload File
+                </button>
+                <button
+                  onClick={() => setUploadMethod('youtube')}
+                  className={`flex-1 px-4 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                    uploadMethod === 'youtube'
+                      ? 'bg-gradient-to-r from-purple-500 to-cyan-500 text-white shadow-lg'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <FiVideo className="inline mr-2" />
+                  YouTube URL
+                </button>
+              </div>
+            )}
+
             {/* Error Message */}
             {error && (
               <motion.div
@@ -212,55 +322,111 @@ const UploadVideoModal = ({ isOpen, onClose, problem, onUploadSuccess }) => {
             {/* Upload Section */}
             {uploadStep === 'select' ? (
               <div className="mb-6">
-                <label className="block w-full">
-                  <div className="border-2 border-dashed border-white/30 rounded-xl p-8 text-center hover:border-purple-400/50 transition-all duration-200 cursor-pointer bg-white/5 hover:bg-white/10">
-                    <FiUpload className="text-white text-4xl mx-auto mb-4" />
-                    <p className="text-white font-medium mb-2">
-                      {videoFile ? videoFile.name : 'Click to select video file'}
-                    </p>
-                    <p className="text-gray-400 text-sm">
-                      MP4, WebM, OGG, MOV, AVI (Max 500MB)
-                    </p>
+                {uploadMethod === 'file' ? (
+                  // File Upload Section
+                  <label className="block w-full">
+                    <div className="border-2 border-dashed border-white/30 rounded-xl p-8 text-center hover:border-purple-400/50 transition-all duration-200 cursor-pointer bg-white/5 hover:bg-white/10">
+                      <FiUpload className="text-white text-4xl mx-auto mb-4" />
+                      <p className="text-white font-medium mb-2">
+                        {videoFile ? videoFile.name : 'Click to select video file'}
+                      </p>
+                      <p className="text-gray-400 text-sm">
+                        MP4, WebM, OGG, MOV, AVI (Max 500MB)
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                      disabled={isUploading}
+                    />
+                  </label>
+                ) : (
+                  // YouTube URL Section
+                  <div>
+                    <div className="relative">
+                      <FiVideo className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl" />
+                      <input
+                        type="text"
+                        placeholder="Paste YouTube URL here (e.g., https://www.youtube.com/watch?v=...)"
+                        value={youtubeUrl}
+                        onChange={handleYoutubeUrlChange}
+                        className="w-full pl-12 pr-4 py-4 bg-white/10 border-2 border-white/30 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-400/50 focus:border-purple-400/50 transition-all duration-200"
+                        disabled={isUploading}
+                      />
+                    </div>
+                    
+                    {/* YouTube URL Preview */}
+                    {youtubeUrl && isValidYoutubeUrl(youtubeUrl) && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-4 bg-white/10 border border-white/20 rounded-xl p-4"
+                      >
+                        <div className="flex items-center">
+                          <img 
+                            src={getYoutubeThumbnail(getYoutubeVideoId(youtubeUrl))} 
+                            alt="YouTube thumbnail"
+                            className="w-32 h-20 object-cover rounded-lg mr-4"
+                            onError={(e) => {
+                              e.target.src = 'https://via.placeholder.com/320x180?text=Video+Preview';
+                            }}
+                          />
+                          <div className="flex-1">
+                            <p className="text-white font-medium mb-1">YouTube Video Detected</p>
+                            <p className="text-gray-400 text-sm">ID: {getYoutubeVideoId(youtubeUrl)}</p>
+                          </div>
+                          <FiCheck className="text-green-400 text-2xl" />
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* YouTube URL Help */}
+                    <div className="mt-4 bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+                      <p className="text-blue-400 text-sm font-medium mb-2">✨ Supported YouTube URL formats:</p>
+                      <ul className="text-gray-300 text-xs space-y-1">
+                        <li>• https://www.youtube.com/watch?v=VIDEO_ID</li>
+                        <li>• https://youtu.be/VIDEO_ID</li>
+                        <li>• https://www.youtube.com/embed/VIDEO_ID</li>
+                      </ul>
+                    </div>
                   </div>
-                  <input
-                    type="file"
-                    accept="video/*"
-                    onChange={handleFileChange}
-                    className="hidden"
-                    disabled={isUploading}
-                  />
-                </label>
+                )}
               </div>
             ) : (
+              // Upload Progress Section
               <div className="mb-6">
                 <div className="space-y-4">
-                  {/* Step 1: Uploading */}
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      uploadStep === 'uploading' ? 'bg-purple-500' : 'bg-green-500'
-                    }`}>
-                      {uploadStep === 'uploading' ? (
-                        <FiLoader className="text-white animate-spin" />
-                      ) : (
-                        <FiCheck className="text-white" />
-                      )}
+                  {/* Step 1: Uploading (only for file upload) */}
+                  {uploadMethod === 'file' && (
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        uploadStep === 'uploading' ? 'bg-purple-500' : 'bg-green-500'
+                      }`}>
+                        {uploadStep === 'uploading' ? (
+                          <FiLoader className="text-white animate-spin" />
+                        ) : (
+                          <FiCheck className="text-white" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-white font-medium">Uploading to Cloudinary</p>
+                        {uploadStep === 'uploading' && (
+                          <>
+                            <div className="mt-2 bg-white/10 rounded-full h-2 overflow-hidden">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${uploadProgress}%` }}
+                                className="h-full bg-gradient-to-r from-purple-500 to-cyan-500"
+                              />
+                            </div>
+                            <p className="text-gray-400 text-sm mt-1">{uploadProgress}%</p>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-white font-medium">Uploading to Cloudinary</p>
-                      {uploadStep === 'uploading' && (
-                        <div className="mt-2 bg-white/10 rounded-full h-2 overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${uploadProgress}%` }}
-                            className="h-full bg-gradient-to-r from-purple-500 to-cyan-500"
-                          />
-                        </div>
-                      )}
-                      {uploadStep === 'uploading' && (
-                        <p className="text-gray-400 text-sm mt-1">{uploadProgress}%</p>
-                      )}
-                    </div>
-                  </div>
+                  )}
 
                   {/* Step 2: Saving metadata */}
                   <div className="flex items-center space-x-3">
@@ -300,11 +466,24 @@ const UploadVideoModal = ({ isOpen, onClose, problem, onUploadSuccess }) => {
 
                 <button
                   onClick={handleUpload}
-                  disabled={!videoFile || isUploading}
+                  disabled={
+                    isUploading || 
+                    (uploadMethod === 'file' && !videoFile) ||
+                    (uploadMethod === 'youtube' && (!youtubeUrl || !isValidYoutubeUrl(youtubeUrl)))
+                  }
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-500 to-cyan-500 text-white font-semibold rounded-xl hover:from-purple-600 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-purple-400/50 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:transform-none flex items-center justify-center"
                 >
-                  <FiUpload className="w-4 h-4 mr-2" />
-                  Upload
+                  {uploadMethod === 'file' ? (
+                    <>
+                      <FiUpload className="w-4 h-4 mr-2" />
+                      Upload Video
+                    </>
+                  ) : (
+                    <>
+                      <FiVideo className="w-4 h-4 mr-2" />
+                      Save YouTube Link
+                    </>
+                  )}
                 </button>
               </div>
             ) : (
@@ -313,7 +492,7 @@ const UploadVideoModal = ({ isOpen, onClose, problem, onUploadSuccess }) => {
                 disabled={isUploading}
                 className="w-full px-6 py-3 bg-white/10 border border-white/20 text-white font-semibold rounded-xl hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-200 disabled:opacity-50"
               >
-                {isUploading ? 'Uploading...' : 'Close'}
+                {isUploading ? 'Processing...' : 'Close'}
               </button>
             )}
           </div>
@@ -553,13 +732,15 @@ const AdminVideo = () => {
     try {
       setDeleteLoading(problemToDelete._id);
       await axiosClient.delete(`/video/delete/${problemToDelete._id}`);
-      setProblems(problems.filter(problem => problem._id !== problemToDelete._id));
-
+      
       showToast(`Video for "${problemToDelete.title}" deleted successfully!`, 'success');
 
       setShowDeleteModal(false);
       setProblemToDelete(null);
       setError(null);
+      
+      // Refresh problems list
+      fetchProblems();
     } catch (error) {
       console.error('Delete error:', error);
       const errorMessage = getErrorMessage(error);
@@ -628,7 +809,7 @@ const AdminVideo = () => {
               </div>
               <div>
                 <h1 className="text-4xl font-bold text-white">Manage Solution Videos</h1>
-                <p className="text-gray-300 mt-2">Upload and manage problem solution videos on Cloudinary</p>
+                <p className="text-gray-300 mt-2">Upload videos or link YouTube tutorials</p>
               </div>
             </div>
           </motion.div>
