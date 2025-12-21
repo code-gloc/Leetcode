@@ -46,20 +46,24 @@ function Homepage() {
     if (user) fetchSolved();
   }, [user]);
 
-  const handleLogout = () => {
-    if(!window.confirm("Are you sure you want to logout?")) return;
-    dispatch(logoutUser());
-    setSolvedProblems([]);
-  };
+  const filtered = Array.isArray(problems)
+  ? problems.filter((p) => {
+      const matchStatus =
+        filters.status === 'all' ||
+        (filters.status === 'solved' &&
+          solvedProblems?.some((s) => s._id === p._id));
 
-  const filtered = problems.filter((p) => {
-    const matchStatus =
-      filters.status === 'all' ||
-      (filters.status === 'solved' && solvedProblems.some((s) => s._id === p._id));
-    const matchDiff = filters.difficulty === 'all' || p.difficulty === filters.difficulty;
-    const matchTag = filters.tag === 'all' || p.tags === filters.tag;
-    return matchStatus && matchDiff && matchTag;
-  });
+      const matchDiff =
+        filters.difficulty === 'all' ||
+        p.difficulty === filters.difficulty;
+
+      const matchTag =
+        filters.tag === 'all' || p.tags === filters.tag;
+
+      return matchStatus && matchDiff && matchTag;
+    })
+  : [];
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-black text-white">

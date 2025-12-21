@@ -37,7 +37,7 @@ const langMap = {
 };
 
 const ProblemPage = () => {
-  const [problem, setProblem] = useState(null);
+  const [problem, setProblem] = useState([]);
   const [selectedLanguage, setSelectedLanguage] = useState('javascript');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -50,23 +50,32 @@ const ProblemPage = () => {
   let { problemId } = useParams();
 
   const { handleSubmit } = useForm();
+useEffect(() => {
+  const fetchProblem = async () => {
+    setLoading(true);
+    try {
+      const response = await axiosClient.get(
+        `/problem/problemById/${problemId}`
+      );
 
-  useEffect(() => {
-    const fetchProblem = async () => {
-      setLoading(true);
-      try {
-        const response = await axiosClient.get(`/problem/problemById/${problemId}`);
-        const initialCode = response.data.startCode.find(sc => sc.language === langMap[selectedLanguage]).initialCode;
-        setProblem(response.data);
-        setCode(initialCode);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching problem:', error);
-        setLoading(false);
-      }
-    };
-    fetchProblem();
-  }, [problemId]);
+      const startCodeArr = response.data?.startCode || [];
+
+      const matchedCode = startCodeArr.find(
+        sc => sc.language === langMap[selectedLanguage]
+      );
+
+      setProblem(response.data);
+      setCode(matchedCode?.initialCode || "");T
+    } catch (error) {
+      console.error('Error fetching problem:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchProblem();
+}, [problemId, selectedLanguage]);
+
 
   useEffect(() => {
     if (problem) {
