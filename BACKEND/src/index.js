@@ -16,7 +16,7 @@ const app = express();
 dotenv.config();
 
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: "https://codex-018.vercel.app",
   credentials: true,
 }));
 
