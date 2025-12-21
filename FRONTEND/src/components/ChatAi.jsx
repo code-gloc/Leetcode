@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import axiosClient from "../utils/axiosClient";
+import axiosClient from "../utils/axiosclient";
 import { Send } from 'lucide-react';
 
 function ChatAi({problem}) {

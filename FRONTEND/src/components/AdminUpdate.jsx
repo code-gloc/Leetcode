@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { motion, AnimatePresence } from 'framer-motion';
-import axiosClient from '../utils/axiosClient';
+import axiosClient from '../utils/axiosclient';
 import { z } from 'zod';
 import { useNavigate } from 'react-router';
 import {
