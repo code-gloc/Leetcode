@@ -67,7 +67,7 @@ function Homepage() {
       <header className="fixed top-0 left-0 w-full bg-black/50 backdrop-blur-md z-20">
         <div className="max-w-6xl mx-auto flex items-center justify-between p-4">
           <NavLink to="/" className="text-2xl font-bold">
-            CodeArena
+            CodeX
           </NavLink>
           <nav className="hidden md:flex items-center space-x-6">
             <select

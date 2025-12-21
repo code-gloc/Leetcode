@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import axiosClient from '../utils/axiosClient';
+import axiosClient from '../utils/axiosclient';
 import {
   FiTrash2,
   FiSearch,
