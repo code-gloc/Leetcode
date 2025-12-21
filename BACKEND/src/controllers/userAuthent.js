@@ -31,9 +31,9 @@ const register=async(req,res)=>{
         //set the token in the cookie
         res.cookie("token",token,{
             maxAge:60*60*1000,// it is in milliseconds
-            httpOnly:true, //to prevent client side access
-            secure:false,
-            sameSite:"strict" //to prevent CSRF attacks
+            httpOnly:true,
+            secure:true,
+            sameSite:"none",
         })
         const reply={
             firstName:user.firstName,
@@ -83,8 +83,8 @@ const login =async(req,res)=>{
         res.cookie("token",token,{
             maxAge:60*60*1000,
             httpOnly:true,
-            secure:false,
-            sameSite:"strict"
+            secure:true,
+            sameSite:"none"
         });
 
         const reply={
