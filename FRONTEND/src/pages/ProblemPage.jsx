@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import Editor from '@monaco-editor/react';
 import { useParams } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
-import axiosClient from "../utils/axiosClient";
+import axiosClient from "../utils/axiosclient";
 import Editorial from '../components/editorials'; 
 import ChatAi from '../components/ChatAi';
 import {
