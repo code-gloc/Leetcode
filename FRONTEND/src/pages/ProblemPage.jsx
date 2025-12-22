@@ -238,7 +238,7 @@ useEffect(() => {
         <div className="w-1/2 flex flex-col border-r border-slate-800/50">
           {/* Enhanced Left Tabs */}
           <div className="flex bg-slate-900/30 backdrop-blur-sm border-b border-slate-800/50 overflow-x-auto">
-            {leftTabs.map((tab) => (
+            {leftTabs?.map((tab) => (
               <motion.button
                 key={tab.id}
                 onClick={() => setActiveLeftTab(tab.id)}
@@ -296,7 +296,7 @@ useEffect(() => {
                           </div>
                           Examples
                         </h2>
-                        {problem.visibleTestCases.map((example, index) => (
+                        {problem?.visibleTestCases?.map((example, index) => (
                           <motion.div
                             key={index}
                             initial={{ opacity: 0, y: 20 }}
@@ -406,7 +406,7 @@ useEffect(() => {
                         </div>
                         Reference Solutions
                       </h2>
-                      {problem.referenceSolution?.map((solution, index) => (
+                      {problem?.referenceSolution?.map((solution, index) => (
                         <div key={index} className="bg-slate-900/50 backdrop-blur-sm border border-slate-800/50 rounded-2xl overflow-hidden shadow-xl">
                           <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-3 border-b border-slate-700/50">
                             <h3 className="font-semibold text-white">{solution?.language}</h3>
@@ -460,7 +460,7 @@ useEffect(() => {
         <div className="w-1/2 flex flex-col">
           {/* Enhanced Right Tabs */}
           <div className="flex bg-slate-900/30 backdrop-blur-sm border-b border-slate-800/50 overflow-x-auto">
-            {rightTabs.map((tab) => (
+            {rightTabs?.map((tab) => (
               <motion.button
                 key={tab.id}
                 onClick={() => setActiveRightTab(tab.id)}
@@ -647,7 +647,7 @@ useEffect(() => {
                                 </div>
                               </div>
                               <div className="space-y-3">
-                                {runResult.testCases.map((tc, i) => (
+                                {runResult?.testCases?.map((tc, i) => (
                                   <motion.div
                                     key={i}
                                     initial={{ opacity: 0, x: -20 }}
@@ -694,7 +694,7 @@ useEffect(() => {
                                 </div>
                               </div>
                               <div className="space-y-3">
-                                {runResult.testCases.map((tc, i) => (
+                                {runResult?.testCases?.map((tc, i) => (
                                   <motion.div
                                     key={i}
                                     initial={{ opacity: 0, x: -20 }}
