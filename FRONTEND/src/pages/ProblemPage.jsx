@@ -58,14 +58,14 @@ useEffect(() => {
         `/problem/problemById/${problemId}`
       );
 
-      const startCodeArr = response.data?.startCode || [];
+      const startCodeArr = response?.data?.startCode || [];
 
-      const matchedCode = startCodeArr.find(
+      const matchedCode = startCodeArr?.find(
         sc => sc.language === langMap[selectedLanguage]
       );
 
       setProblem(response.data);
-      setCode(matchedCode?.initialCode || "");T
+      setCode(matchedCode?.initialCode || "");
     } catch (error) {
       console.error('Error fetching problem:', error);
     } finally {
@@ -79,7 +79,7 @@ useEffect(() => {
 
   useEffect(() => {
     if (problem) {
-      const initialCode = problem.startCode.find(sc => sc.language === langMap[selectedLanguage]).initialCode;
+      const initialCode = problem.startCode?.find(sc => sc.language === langMap[selectedLanguage]).initialCode;
       setCode(initialCode);
     }
   }, [selectedLanguage, problem]);
@@ -340,33 +340,7 @@ useEffect(() => {
                     </div>
                   )}
 
-                  {/* {activeLeftTab === 'editorial' && (
-            <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6 shadow-xl">
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center">
-            <div className="w-6 h-6 bg-gradient-to-r from-purple-500 to-violet-600 rounded-lg flex items-center justify-center mr-3">
-           <FiBook className="w-3 h-3 text-white" />
-        </div>
-        Editorial
-      </h2>
-       <div className="text-slate-300 leading-relaxed">
-        {problem?.secureUrl ? (
-        <Editorial 
-          secureUrl={problem.secureUrl} 
-          thumbnailUrl={problem.thumbnailUrl} 
-          duration={problem.duration} 
-        />
-      ) : (
-        <div className="bg-slate-900/50 border border-slate-800/50 rounded-xl p-8 text-center">
-          <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <FiBook className="w-8 h-8 text-slate-400" />
-          </div>
-          <h4 className="text-white font-semibold mb-2">No Editorial Available</h4>
-          <p className="text-slate-400">Editorial video hasn't been uploaded yet for this problem.</p>
-        </div>
-      )}
-    </div>
-  </div>
-)} */}
+                  
 
                  {activeLeftTab === 'editorial' && (
       <div className="bg-slate-900/50 backdrop-blur-sm border border-slate-800/50 rounded-2xl p-6 shadow-xl">
