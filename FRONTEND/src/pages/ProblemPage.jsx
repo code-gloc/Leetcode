@@ -210,13 +210,13 @@ useEffect(() => {
             </motion.div>
             {problem && (
               <div>
-                <h1 className="text-xl font-bold text-white">{problem.title}</h1>
+                <h1 className="text-xl font-bold text-white">{problem?.title}</h1>
                 <div className="flex items-center space-x-3 mt-1">
-                  <div className={`inline-flex items-center px-2 py-1 rounded-lg border text-xs font-medium ${getDifficultyColor(problem.difficulty)}`}>
-                    {problem.difficulty.charAt(0).toUpperCase() + problem.difficulty.slice(1)}
+                  <div className={`inline-flex items-center px-2 py-1 rounded-lg border text-xs font-medium ${getDifficultyColor(problem?.difficulty)}`}>
+                    {problem?.difficulty ? problem.difficulty.charAt(0).toUpperCase() + problem.difficulty.slice(1) : " "}
                   </div>
                   <div className="inline-flex items-center px-2 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-medium">
-                    {problem.tags}
+                    {problem?.tags}
                   </div>
                 </div>
               </div>
