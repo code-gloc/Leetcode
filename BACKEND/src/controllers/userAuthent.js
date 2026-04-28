@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import validate from "../utils/validator.js";
 import jwt from "jsonwebtoken";
 import redisClient from "../config/redis.js";
+const isProduction = process.env.NODE_ENV === "production";
 
 const register=async(req,res)=>{
     try{
@@ -29,12 +30,12 @@ const register=async(req,res)=>{
         const token=jwt.sign({email:email,_id:user._id,role:user.role},process.env.JWT_SECRET_KEY,{expiresIn:60*60});
 
         //set the token in the cookie
-        res.cookie("token",token,{
-            maxAge:60*60*1000,// it is in milliseconds
-            httpOnly:true,
-            secure:true,
-            sameSite:"none",
-        })
+        res.cookie("token", token, {
+       maxAge: 60 * 60 * 1000,
+       httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "none" : "lax"
+      });
         const reply={
             firstName:user.firstName,
             email:user.email,
@@ -80,12 +81,12 @@ const login =async(req,res)=>{
         const token=jwt.sign({email:email,_id:user._id,role:user.role},process.env.JWT_SECRET_KEY,{expiresIn:60*60*24});//token expires in 24 hours means you have to login again after 24 hrs.
 
         //set the token in the cookie
-        res.cookie("token",token,{
-            maxAge:60*60*1000,
-            httpOnly:true,
-            secure:true,
-            sameSite:"none"
-        });
+        res.cookie("token", token, {
+      maxAge: 60 * 60 * 1000,
+     httpOnly: true,
+     secure: isProduction,
+     sameSite: isProduction ? "none" : "lax"
+    });
 
         const reply={
             firstName:user.firstName,
